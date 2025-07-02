@@ -21,8 +21,11 @@
 #include "runtime-common/core/runtime-core.h"
 #include "runtime-common/core/utils/kphp-assert-core.h"
 #include "runtime-common/stdlib/server/url-functions.h"
+#include "runtime-common/stdlib/string/string-functions.h"
+#include "runtime-common/stdlib/tracing/tracing-functions.h"
 #include "runtime-light/core/globals/php-script-globals.h"
 #include "runtime-light/server/http/http-server-state.h"
+#include "runtime-light/server/http/multipart.h"
 #include "runtime-light/state/instance-state.h"
 #include "runtime-light/stdlib/server/http-functions.h"
 #include "runtime-light/stdlib/zlib/zlib-functions.h"
@@ -191,6 +194,7 @@ std::string_view process_headers(tl::K2InvokeHttp& invoke_http, PhpScriptBuiltIn
   return content_type;
 }
 
+
 } // namespace
 
 namespace kphp {
@@ -279,8 +283,11 @@ void init_server(tl::K2InvokeHttp&& invoke_http) noexcept {
     string body_str{invoke_http.body.data(), static_cast<string::size_type>(invoke_http.body.size())};
     if (content_type == CONTENT_TYPE_APP_FORM_URLENCODED) {
       f$parse_str(body_str, superglobals.v$_POST);
-    } else if (content_type == CONTENT_TYPE_MULTIPART_FORM_DATA) {
-      php_error("unsupported content-type: %s", CONTENT_TYPE_MULTIPART_FORM_DATA.data());
+    } else if (content_type.starts_with(CONTENT_TYPE_MULTIPART_FORM_DATA)) {
+      std::string_view boundary = parse_boundary(content_type);
+      if (!boundary.empty()) {
+        parse_multipart(invoke_http.body, boundary, superglobals.v$_POST);
+      }
     } else {
       http_server_instance_st.opt_raw_post_data.emplace(std::move(body_str));
     }

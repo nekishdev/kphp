@@ -13,7 +13,7 @@
 
 Optional<string> f$iconv(const string& input_encoding, const string& output_encoding, const string& input_str) noexcept {
   iconv_t cd{};
-  if (k2::iconv_open(std::addressof(cd), output_encoding.c_str(), input_encoding.c_str()) != k2::errno_ok) [[unlikely]] {
+  if (k2::iconv_open((void**)std::addressof(cd), output_encoding.c_str(), input_encoding.c_str()) != k2::errno_ok) [[unlikely]] {
     php_warning(R"(unsupported iconv from "%s" to "%s")", input_encoding.c_str(), output_encoding.c_str());
     return false;
   }
